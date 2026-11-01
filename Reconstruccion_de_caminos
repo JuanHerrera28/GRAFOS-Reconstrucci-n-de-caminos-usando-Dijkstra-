@@ -1,0 +1,93 @@
+import java.util.*;
+
+public class Re_camino_lista {
+    static final int INF = Integer.MAX_VALUE;
+
+    static class Arista {                                  // nodo de la lista enlazada
+        int destino, peso;
+        Arista sig;
+        Arista(int destino, int peso, Arista sig) {
+            this.destino = destino; this.peso = peso; this.sig = sig;
+        }
+    }
+
+    public static void main(String[] args) {
+        String[] V = {"A", "B", "C", "D", "E", "F"};
+        int n = V.length, origen = 0, destino = 5;
+
+        // GRAFO: g[i] = lista enlazada con las flechas que salen de i  {origen, destino, peso}
+        Arista[] g = new Arista[n];
+        int[][] flechas = {{0,1,4}, {0,2,1}, {1,3,1}, {1,4,7}, {2,1,2}, {2,3,5}, {3,4,3}, {3,5,6}, {4,5,2}};
+        for (int[] f : flechas) {
+            if (f[2] < 0) throw new IllegalArgumentException("Dijkstra no admite pesos negativos");
+            g[f[0]] = new Arista(f[1], f[2], g[f[0]]);     // insertar al inicio: O(1)
+        }
+
+        int[] costo = new int[n], ant = new int[n];
+        boolean[] fin = new boolean[n];
+        Arrays.fill(costo, INF);
+        Arrays.fill(ant, -1);
+        costo[origen] = 0;
+
+        PriorityQueue<int[]> cola = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1])); // {vertice, costo}
+        cola.add(new int[]{origen, 0});
+        System.out.println("INICIO: " + V[origen] + " = 0 y los demás = infinito");
+        mostrar(V, costo, fin, ant);
+
+        int paso = 0;
+        while (!cola.isEmpty()) {
+            int u = cola.poll()[0];                        // el temporal más barato
+            if (fin[u]) continue;                          // entrada vieja
+            fin[u] = true;
+            System.out.println("\n=== PASO " + (++paso) + ": " + V[u] + " (" + costo[u] + ") pasa a FINAL ===");
+
+            for (Arista a = g[u]; a != null; a = a.sig) {  // solo las flechas que salen de u
+                int v = a.destino, nuevo = costo[u] + a.peso;
+                if (fin[v]) continue;
+                boolean mejora = nuevo < costo[v];
+                System.out.println("  " + V[u] + " -> " + V[v] + ": " + costo[u] + " + " + a.peso + " = " + nuevo
+                        + (mejora ? "  -> MEJORA" : "  -> no mejora"));
+                if (mejora) { costo[v] = nuevo; ant[v] = u; cola.add(new int[]{v, nuevo}); }
+            }
+            mostrar(V, costo, fin, ant);
+        }
+
+        if (costo[destino] == INF) { System.out.println(V[destino] + " no es alcanzable desde " + V[origen]); return; }
+
+        // ===== RECONSTRUCCION PASO A PASO (del destino hacia atrás) =====
+        System.out.println("\n=== RECONSTRUCCION DEL CAMINO (de " + V[destino] + " hacia " + V[origen] + ") ===");
+        LinkedList<Integer> camino = new LinkedList<>();
+        int acumulado = 0, k = 0, v = destino;
+        camino.addFirst(v);
+        System.out.println("  Paso " + (++k) + ": parto de " + V[v] + "                      | acumulado = " + acumulado);
+
+        while (ant[v] != -1) {
+            int u = ant[v];
+            int peso = costo[v] - costo[u];               // peso de la arista u -> v
+            acumulado += peso;
+            System.out.println("  Paso " + (++k) + ": " + V[v] + " viene de " + V[u]
+                    + "  (arista " + V[u] + "->" + V[v] + " = " + peso + ")"
+                    + " | acumulado = " + acumulado);
+            camino.addFirst(u);
+            v = u;
+        }
+
+        // ===== CAMINO EN ORDEN NORMAL, con el costo desde el origen en cada vértice =====
+        StringBuilder sb = new StringBuilder();
+        for (int x : camino) {
+            if (sb.length() > 0) sb.append(" -> ");
+            sb.append(V[x]).append("(").append(costo[x]).append(")");
+        }
+        System.out.println("\nCAMINO OPTIMO: " + sb);
+        System.out.println("COSTO MINIMO hasta " + V[destino] + " = " + costo[destino]);
+    }
+
+    // Tabla: temporal / final / predecesor de cada vértice
+    static void mostrar(String[] V, int[] costo, boolean[] fin, int[] ant) {
+        System.out.println("  Vertice | Temporal | Final | Viene de");
+        for (int i = 0; i < V.length; i++)
+            System.out.printf("     %s    |    %-5s |   %-3s |    %s%n", V[i],
+                    fin[i] ? "-" : costo[i] == INF ? "inf" : "" + costo[i],
+                    fin[i] ? "" + costo[i] : "-", ant[i] == -1 ? "-" : V[ant[i]]);
+    }
+}
